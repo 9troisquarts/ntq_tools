@@ -8,7 +8,7 @@ How to use my plugin.
 Add this line to your application's Gemfile:
 
 ```ruby
-gem "ntq_tools"
+gem "ntq_tools", git: "https://github.com/9troisquarts/ntq_tools"
 ```
 
 And then execute:
