@@ -1,5 +1,5 @@
 module NtqTools
-  class ImpersonationController < NtqTools::ApplicationController
+  class ImpersonationController < ::ApplicationController
     
     before_action :check_impersonation_enabled, except: [:config]
     before_action :model_name_is_valid?, only: [:sign_in]
