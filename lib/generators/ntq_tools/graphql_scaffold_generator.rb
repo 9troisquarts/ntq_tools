@@ -115,11 +115,12 @@ FILE
           module Mutations
             class #{plural_name.camelcase}::Create#{singular_name.camelcase} < BaseMutation
               field :flash_messages, [Types::JsonType], null: false
+              field :#{singular_name}, Types::#{singular_name.camelcase}Type, null: false
 
               argument :attributes, InputObject::#{singular_name.camelcase}Attributes, required: true
 
               def authorized?(attributes:)
-                context[:current_user].can?(:create, #{singular_name})
+                context[:current_user].can?(:create, #{singular_name.camelcase})
               end
 
               def resolve(attributes:)
@@ -145,6 +146,7 @@ FILE
           module Mutations
             class #{plural_name.camelcase}::Update#{singular_name.camelcase} < BaseMutation
               field :flash_messages, [Types::JsonType], null: false
+              field :#{singular_name}, Types::#{singular_name.camelcase}Type, null: false
 
               argument :id, ID, required: true
               argument :attributes, InputObject::#{singular_name.camelcase}Attributes, required: true
@@ -159,8 +161,8 @@ FILE
                 #{singular_name}.attributes = attributes
                 #{singular_name}.save!
                 {
+                  #{singular_name}: #{singular_name},
                   flash_messages: [
-                    #{singular_name}: #{singular_name},
                     {
                       type: 'success',
                       message: I18n.t(:'flashes.#{plural_name}.update.success')
@@ -204,9 +206,9 @@ FILE
         puts 'Do you want to create the payload file ? (y/n)'
         input = $stdin.gets.strip
         if input == 'y'
-          create_file "app/graphql/types/#{singular_name}/#{singular_name}_list_payload.rb", <<~FILE
+          create_file "app/graphql/types/#{plural_name}/#{singular_name}_list_payload.rb", <<~FILE
             module Types
-              module #{singular_name.camelcase}
+              module #{plural_name.camelcase}
                 class #{singular_name.camelcase}ListPayload < BaseObject
                   field :#{plural_name}, [#{singular_name.camelcase}::#{singular_name.camelcase}Type], null: true
                   field :pagination, PaginationType, null: true
