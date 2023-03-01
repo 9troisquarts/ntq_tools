@@ -1,9 +1,9 @@
 PATH
   remote: .
   specs:
-    ntq_tools (0.1.0)
+    ntq_tools (0.3.1)
       missing_translation (< 1.0.0)
-      rails (>= 7.0.3.1)
+      rails (>= 6, < 8)
 
 GEM
   remote: https://rubygems.org/
@@ -74,7 +74,7 @@ GEM
       minitest (>= 5.1)
       tzinfo (~> 2.0)
     builder (3.2.4)
-    concurrent-ruby (1.2.0)
+    concurrent-ruby (1.2.2)
     crass (1.0.6)
     date (3.3.3)
     erubi (1.12.0)

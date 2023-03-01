@@ -60,8 +60,6 @@ module NtqTools
       end
     
       def self.modify(key, values)
-        puts key
-        puts values.inspect
         config_folder = "#{::Rails.root}/config/locales/*.yml"
         file_pathnames = Dir[config_folder]
         return unless file_pathnames && file_pathnames.size > 0

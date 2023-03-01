@@ -60,7 +60,7 @@ module NtqTools
         %i[belongs_to has_one].each do |association_type|
           class_name.constantize.reflect_on_all_associations(association_type).each do |asso|
             class_name = asso.options.dig(:class_name) || asso.name.to_s.singularize.camelcase
-            associations << "field :#{asso.name}, Types::#{class_name}Type"
+            associations << "field :#{asso.name}, Types::#{class_name.downcase.pluralize.camelcase}::#{class_name}Type"
           end
         end
         [:has_many].each do |association_type|
@@ -68,7 +68,7 @@ module NtqTools
             class_name = asso.options.dig(:class_name) || asso.name.to_s.singularize.camelcase
             next if class_name == 'PaperTrail::Version'
 
-            associations << "field :#{asso.name}, [Types::#{class_name}Type]"
+            associations << "field :#{asso.name}, [Types::#{class_name.downcase.pluralize.camelcase}::#{class_name}Type]"
           end
         end
 
@@ -101,21 +101,13 @@ module InputObject
 end
 FILE
 
-# Attributes file
-create_file "app/graphql/input_object/search_#{plural_name}_attributes.rb", <<~FILE
-module InputObject
-  class Search#{plural_name.camelcase}Attributes < AttributesInputObject
-
-  end
-end
-FILE
-
         # Create mutation
         create_file "app/graphql/mutations/#{plural_name}/create_#{singular_name}.rb", <<~FILE
           module Mutations
             class #{plural_name.camelcase}::Create#{singular_name.camelcase} < BaseMutation
+
+              field :#{singular_name}, Types::#{plural_name.camelcase}::#{singular_name.camelcase}Type, null: false
               field :flash_messages, [Types::JsonType], null: false
-              field :#{singular_name}, Types::#{singular_name.camelcase}Type, null: false
 
               argument :attributes, InputObject::#{singular_name.camelcase}Attributes, required: true
 
@@ -145,8 +137,9 @@ FILE
         create_file "app/graphql/mutations/#{plural_name}/update_#{singular_name}.rb", <<~FILE
           module Mutations
             class #{plural_name.camelcase}::Update#{singular_name.camelcase} < BaseMutation
-              field :flash_messages, [Types::JsonType], null: false
-              field :#{singular_name}, Types::#{singular_name.camelcase}Type, null: false
+
+              field :#{singular_name}, Types::#{plural_name.camelcase}::#{singular_name.camelcase}Type, null: false
+              field :flash_messages, [Types::JsonType], null: true
 
               argument :id, ID, required: true
               argument :attributes, InputObject::#{singular_name.camelcase}Attributes, required: true
@@ -178,7 +171,9 @@ FILE
         create_file "app/graphql/mutations/#{plural_name}/delete_#{singular_name}.rb", <<~FILE
           module Mutations
             class #{plural_name.camelcase}::Delete#{singular_name.camelcase} < BaseMutation
-              field :flash_messages, [Types::JsonType], null: false
+
+              field :#{singular_name}, Types::#{plural_name.camelcase}::#{singular_name.camelcase}Type
+              field :flash_messages, [Types::JsonType], null: true
 
               argument :id, ID, required: true
 
@@ -191,6 +186,7 @@ FILE
                 #{singular_name} = ::#{singular_name.camelcase}.find id
                 #{singular_name}.destroy!
                 {
+                  #{singular_name}: #{singular_name},
                   flash_messages: [
                     {
                       type: 'success',
@@ -203,6 +199,14 @@ FILE
           end
         FILE
 
+        inject_into_file 'app/graphql/types/mutation_type.rb', after: "Types::BaseObject" do <<-FILE
+
+    field :create_#{singular_name}, mutation: Mutations::#{plural_name.camelcase}::Create#{singular_name.camelcase}
+    field :update_#{singular_name}, mutation: Mutations::#{plural_name.camelcase}::Update#{singular_name.camelcase}
+    field :delete_#{singular_name}, mutation: Mutations::#{plural_name.camelcase}::Delete#{singular_name.camelcase}
+        FILE
+        end
+
         puts 'Do you want to create the payload file ? (y/n)'
         input = $stdin.gets.strip
         if input == 'y'
@@ -210,12 +214,47 @@ FILE
             module Types
               module #{plural_name.camelcase}
                 class #{singular_name.camelcase}ListPayload < BaseObject
-                  field :#{plural_name}, [#{singular_name.camelcase}::#{singular_name.camelcase}Type], null: true
+                  field :#{plural_name}, [#{plural_name.camelcase}::#{singular_name.camelcase}Type], null: true
                   field :pagination, PaginationType, null: true
                 end
               end
             end
           FILE
+
+          # Attributes file
+          create_file "app/graphql/input_object/search_#{plural_name}_attributes.rb", <<~FILE
+          module InputObject
+            class Search#{plural_name.camelcase}Attributes < AttributesInputObject
+
+            end
+          end
+          FILE
+          
+          inject_into_file 'app/graphql/types/query_type.rb', after: "# Fields\n" do <<-FILE
+    field :#{plural_name}, Types::#{plural_name.camelcase}::#{singular_name.camelcase}ListPayload do
+      argument :search, InputObject::Search#{plural_name.camelcase}Attributes, required: false
+      argument :page, Integer, required: false
+      argument :per_page, Integer, required: false
+    end
+    def #{plural_name}(search: {}, page: 1, per_page: 25)
+      ctx = ::#{plural_name.camelcase}::Search#{singular_name.camelcase}.call(search: search, pagination_params: { page: page, per_page: per_page })
+      {
+        #{plural_name}: ctx.records,
+        pagination: ctx.pagination
+      }
+    end\n
+          FILE
+          end
+
+          inject_into_file 'app/graphql/types/query_type.rb', after: "# Fields\n" do <<-FILE 
+    field :#{singular_name}, Types::#{plural_name.camelcase}::#{singular_name.camelcase}Type do
+      argument :id, ID, required: true
+    end
+    def #{singular_name}(id:)
+      ::#{singular_name.camelcase}.find(id)
+    end\n
+          FILE
+        end
         end
       end
     end

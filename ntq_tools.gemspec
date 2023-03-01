@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.authors     = ["Kevin"]
   spec.email       = ["kevin@9troisquarts.com"]
   spec.homepage    = "https://github.com"
-  spec.summary     = "Boite à outil de 9troisquarts"
+  spec.summary     = "Toolkit 9tq"
   spec.description = "Boite à outil de 9troisquarts"
   spec.license     = "MIT"
   
