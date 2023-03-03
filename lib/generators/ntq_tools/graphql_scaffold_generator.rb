@@ -6,6 +6,8 @@ module NtqTools
 
       def create_type_file
         singular_name = plural_name.singularize
+        context_name = plural_name.camelcase
+        class_name = singular_name.camelcase
         return unless defined?(class_name.constantize) && class_name.constantize.respond_to?(:columns_hash)
 
         definition = []
@@ -59,16 +61,16 @@ module NtqTools
         associations = []
         %i[belongs_to has_one].each do |association_type|
           class_name.constantize.reflect_on_all_associations(association_type).each do |asso|
-            class_name = asso.options.dig(:class_name) || asso.name.to_s.singularize.camelcase
-            associations << "field :#{asso.name}, Types::#{class_name.downcase.pluralize.camelcase}::#{class_name}Type"
+            asso_class_name = asso.options.dig(:class_name) || asso.name.to_s.singularize.camelcase
+            associations << "field :#{asso.name}, Types::#{asso_class_name.downcase.pluralize.camelcase}::#{asso_class_name}Type"
           end
         end
         [:has_many].each do |association_type|
           class_name.constantize.reflect_on_all_associations(association_type).each do |asso|
-            class_name = asso.options.dig(:class_name) || asso.name.to_s.singularize.camelcase
-            next if class_name == 'PaperTrail::Version'
+            asso_class_name = asso.options.dig(:class_name) || asso.name.to_s.singularize.camelcase
+            next if asso_class_name == 'PaperTrail::Version'
 
-            associations << "field :#{asso.name}, [Types::#{class_name.downcase.pluralize.camelcase}::#{class_name}Type]"
+            associations << "field :#{asso.name}, [Types::#{asso_class_name.downcase.pluralize.camelcase}::#{asso_class_name}Type]"
           end
         end
 
@@ -230,6 +232,32 @@ FILE
           end
           FILE
           
+          if defined?(Interactor)
+            create_file "app/interactors/#{plural_name}/search_#{singular_name}.rb", <<-FILE
+module #{context_name}
+  class Search#{class_name}
+    include Interactor::Organizer
+
+    organize Get#{class_name}, PaginateRecords
+  end
+end
+            FILE
+
+            create_file "app/interactors/#{plural_name}/get_#{singular_name}.rb", <<-FILE
+module #{context_name}
+  class Get#{class_name}
+    include Interactor
+
+    def call
+      search = context.search || {}
+      records = ::#{class_name}.ransack(search).result
+      context.records = records
+    end
+  end
+end
+            FILE
+          end
+
           inject_into_file 'app/graphql/types/query_type.rb', after: "# Fields\n" do <<-FILE
     field :#{plural_name}, Types::#{plural_name.camelcase}::#{singular_name.camelcase}ListPayload do
       argument :search, InputObject::Search#{plural_name.camelcase}Attributes, required: false

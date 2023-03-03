@@ -20,6 +20,10 @@ module NtqTools
       render json: { data: true }, status: 200
     end 
 
+    def refresh
+      if defined?(ReactOnRails) system "bundle exec rake react_on_rails:locale"
+    end
+
     private
 
       def check_presence_of_key
