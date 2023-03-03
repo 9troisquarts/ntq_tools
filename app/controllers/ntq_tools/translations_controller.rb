@@ -2,7 +2,7 @@ require 'ntq_tools/translations/translation_tool'
 module NtqTools
   class TranslationsController < NtqTools::ApplicationController
     skip_before_action :verify_authenticity_token
-    before_action :check_presence_of_key
+    before_action :check_presence_of_key, except: [:refresh]
 
     def show
       return  render json: { data: nil }, status: 404 unless I18n.exists?(params[:key].to_s)
