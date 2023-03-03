@@ -21,7 +21,7 @@ module NtqTools
     end 
 
     def refresh
-      if defined?(ReactOnRails) system "bundle exec rake react_on_rails:locale"
+      system("bundle exec rake react_on_rails:locale") if defined?(ReactOnRails)
     end
 
     private
